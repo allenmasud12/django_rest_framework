@@ -6,43 +6,24 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 from myapp.models import Contact
 from myapp.serializers import ContactSerializer
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import mixins
+from rest_framework import generics
 
 
-@csrf_exempt
-def api_list(request):
-    if request.method == 'GET':
-        apivar = Contact.objects.all()
-        serializer = ContactSerializer(apivar, many=True)
-        return JsonResponse(serializer.data, safe=False)
+class GnapiList(mixins.ListModelMixin,
+                  mixins.CreateModelMixin,
+                  generics.GenericAPIView):
+    queryset = Contact.objects.all()
+    serializer_class = ContactSerializer
+    # authentication_classes = [SessionAuthentication, BasicAuthentication]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-    elif request.method == 'POST':
-        data = JSONParser().parse(request)
-        serializer = ContactSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return JsonResponse(serializer.data, status=201)
-        return JsonResponse(serializer.errors, status=400)
-    
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
 
-@csrf_exempt
-def api_detail(request, pk):
-    try:
-        dvar = Contact.objects.get(pk=pk)
-    except Contact.DoesNotExist:
-        return HttpResponse(status=404)
-
-    if request.method == 'GET':
-        serializer = ContactSerializer(dvar)
-        return JsonResponse(serializer.data)
-
-    elif request.method == 'PUT':
-        data = JSONParser().parse(request)
-        serializer = ContactSerializer(dvar, data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return JsonResponse(serializer.data)
-        return JsonResponse(serializer.errors, status=400)
-
-    elif request.method == 'DELETE':
-        dvar.delete()
-        return HttpResponse(status=204)    
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
